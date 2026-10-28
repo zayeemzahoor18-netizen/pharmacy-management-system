@@ -1,0 +1,79 @@
+
+{% extends "base.html" %}
+
+{% block title %}Medicine Form | Pharmacy Management{% endblock %}
+
+{% block content %}
+<h2 class="page-title mb-4">
+    {% if medicine %}Edit Medicine{% else %}Add New Medicine{% endif %}
+</h2>
+
+<div class="card p-4">
+    <form method="POST">
+        <div class="row g-3">
+
+            <div class="col-md-6">
+                <label class="form-label">Medicine Name</label>
+                <input type="text" name="name" class="form-control"
+                       value="{{ medicine.name if medicine else '' }}"
+                       required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Company Name</label>
+                <input type="text" name="company" class="form-control"
+                       value="{{ medicine.company if medicine else '' }}"
+                       required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Batch Number</label>
+                <input type="text" name="batch" class="form-control"
+                       value="{{ medicine.batch if medicine else '' }}"
+                       required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Quantity in Stock</label>
+                <input type="number" name="quantity" class="form-control"
+                       min="0"
+                       value="{{ medicine.quantity if medicine else 0 }}"
+                       required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Price per Unit (₹)</label>
+                <input type="number" name="price" class="form-control"
+                       min="0" step="0.01"
+                       value="{{ medicine.price if medicine else 0 }}"
+                       required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Expiry Date</label>
+                <input type="date" name="expiry_date" class="form-control"
+                       value="{{ medicine.expiry_date.isoformat() if medicine else '' }}"
+                       required>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Low Stock Alert Limit</label>
+                <input type="number" name="low_stock_limit" class="form-control"
+                       min="0"
+                       value="{{ medicine.low_stock_limit if medicine else 10 }}"
+                       required>
+            </div>
+
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                Save Medicine
+            </button>
+
+            <a href="{{ url_for('medicines') }}"
+               class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

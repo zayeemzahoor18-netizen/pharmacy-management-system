@@ -1,0 +1,106 @@
+
+{% extends "base.html" %}
+
+{% block title %}Billing | Pharmacy Management{% endblock %}
+
+{% block content %}
+<h2 class="page-title mb-4">Medicine Billing</h2>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card p-4">
+            <h4 class="mb-3">Create a New Bill</h4>
+
+            {% if medicines %}
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Select Medicine</label>
+                    <select name="medicine_id" id="medicine"
+                            class="form-select" required>
+                        <option value="">Choose a medicine</option>
+                        {% for medicine in medicines %}
+                        <option value="{{ medicine.id }}"
+                                data-price="{{ medicine.price }}"
+                                data-stock="{{ medicine.quantity }}">
+                            {{ medicine.name }} — ₹{{ "%.2f"|format(medicine.price) }}
+                            (Stock: {{ medicine.quantity }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" name="quantity" id="quantity"
+                           class="form-control" min="1" value="1" required>
+                    <small class="text-muted" id="stockInfo">
+                        Select a medicine to see available stock.
+                    </small>
+                </div>
+
+                <div class="alert alert-info">
+                    Estimated Total: <strong id="total">₹0.00</strong>
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    Complete Sale
+                </button>
+            </form>
+            {% else %}
+            <div class="alert alert-warning">
+                No available, unexpired medicines in stock.
+                <a href="{{ url_for('add_medicine') }}">Add a medicine</a>
+                before creating a bill.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card p-4">
+            <h4>Billing Information</h4>
+            <p class="text-muted">
+                Select a medicine and enter the quantity to calculate the bill.
+            </p>
+            <ul>
+                <li>The total is calculated automatically.</li>
+                <li>Stock decreases after a successful sale.</li>
+                <li>Expired medicines cannot be sold.</li>
+                <li>Sales are saved in the database.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const medicineSelect = document.getElementById("medicine");
+    const quantityInput = document.getElementById("quantity");
+    const totalDisplay = document.getElementById("total");
+    const stockInfo = document.getElementById("stockInfo");
+
+    function calculateTotal() {
+        if (!medicineSelect) return;
+
+        const option = medicineSelect.options[medicineSelect.selectedIndex];
+        const price = Number(option.dataset.price || 0);
+        const stock = Number(option.dataset.stock || 0);
+        const quantity = Number(quantityInput.value || 0);
+
+        totalDisplay.textContent = "₹" + (price * quantity).toFixed(2);
+
+        if (option.value) {
+            quantityInput.max = stock;
+            stockInfo.textContent = "Available stock: " + stock;
+        } else {
+            quantityInput.removeAttribute("max");
+            stockInfo.textContent = "Select a medicine to see available stock.";
+        }
+    }
+
+    if (medicineSelect) {
+        medicineSelect.addEventListener("change", calculateTotal);
+        quantityInput.addEventListener("input", calculateTotal);
+    }
+</script>
+{% endblock %}
+

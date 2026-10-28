@@ -1,0 +1,6 @@
+.venv/
+.venv-1/
+__pycache__/
+*.pyc
+pharmacy.db
+.env

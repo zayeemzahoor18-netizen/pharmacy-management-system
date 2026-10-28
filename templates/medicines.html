@@ -1,0 +1,90 @@
+
+{% extends "base.html" %}
+
+{% block title %}Medicines | Pharmacy Management{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <h2 class="page-title mb-0">Medicine Inventory</h2>
+    <a href="{{ url_for('add_medicine') }}" class="btn btn-primary">
+        + Add Medicine
+    </a>
+</div>
+
+<div class="card p-3 mb-4">
+    <form method="GET" action="{{ url_for('medicines') }}" class="d-flex gap-2">
+        <input type="text" name="search" class="form-control"
+               placeholder="Search medicine by name..."
+               value="{{ search }}">
+        <button class="btn btn-primary" type="submit">Search</button>
+        <a href="{{ url_for('medicines') }}" class="btn btn-outline-secondary">
+            Reset
+        </a>
+    </form>
+</div>
+
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Medicine</th>
+                    <th>Company</th>
+                    <th>Batch</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for medicine in medicines %}
+                <tr>
+                    <td>{{ medicine.id }}</td>
+                    <td class="fw-bold">{{ medicine.name }}</td>
+                    <td>{{ medicine.company }}</td>
+                    <td>{{ medicine.batch }}</td>
+                    <td>{{ medicine.quantity }}</td>
+                    <td>₹{{ "%.2f"|format(medicine.price) }}</td>
+                    <td>{{ medicine.expiry_date.strftime("%d-%m-%Y") }}</td>
+
+                    <td>
+                        {% if medicine.expiry_date < today %}
+                            <span class="badge bg-danger">Expired</span>
+                        {% elif medicine.quantity <= medicine.low_stock_limit %}
+                            <span class="badge bg-warning text-dark">Low Stock</span>
+                        {% else %}
+                            <span class="badge bg-success">Available</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('edit_medicine', medicine_id=medicine.id) }}"
+                               class="btn btn-sm btn-outline-primary">Edit</a>
+
+                            <form method="POST"
+                                  action="{{ url_for('delete_medicine', medicine_id=medicine.id) }}"
+                                  onsubmit="return confirm('Delete this medicine?');">
+                                <button class="btn btn-sm btn-outline-danger"
+                                        type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center py-4">
+                        No medicines found. Click <strong>Add Medicine</strong>
+                        to create your first record.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

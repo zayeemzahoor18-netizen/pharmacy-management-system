@@ -1,0 +1,107 @@
+
+{% extends "base.html" %}
+
+{% block title %}Stock Alerts | Pharmacy Management{% endblock %}
+
+{% block content %}
+<h2 class="page-title mb-4">Stock & Expiry Alerts</h2>
+
+<div class="card p-4 mb-4">
+    <h4 class="text-warning mb-3">⚠️ Low Stock Medicines</h4>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Company</th>
+                    <th>Available Quantity</th>
+                    <th>Minimum Stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for medicine in low_stock %}
+                <tr>
+                    <td>{{ medicine.name }}</td>
+                    <td>{{ medicine.company }}</td>
+                    <td>{{ medicine.quantity }}</td>
+                    <td>{{ medicine.low_stock_limit }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-success">
+                        No low-stock medicines.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <h4 class="text-danger mb-3">Expired Medicines</h4>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Batch</th>
+                    <th>Quantity</th>
+                    <th>Expiry Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for medicine in expired %}
+                <tr>
+                    <td>{{ medicine.name }}</td>
+                    <td>{{ medicine.batch }}</td>
+                    <td>{{ medicine.quantity }}</td>
+                    <td>{{ medicine.expiry_date.strftime("%d-%m-%Y") }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-success">
+                        No expired medicines.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card p-4">
+    <h4 class="text-primary mb-3">Medicines Expiring This Year</h4>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Batch</th>
+                    <th>Quantity</th>
+                    <th>Expiry Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for medicine in expiring %}
+                <tr>
+                    <td>{{ medicine.name }}</td>
+                    <td>{{ medicine.batch }}</td>
+                    <td>{{ medicine.quantity }}</td>
+                    <td>{{ medicine.expiry_date.strftime("%d-%m-%Y") }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center">
+                        No medicines expiring this year.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
