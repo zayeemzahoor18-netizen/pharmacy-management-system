@@ -7,59 +7,93 @@
 <h2 class="page-title mb-4">Pharmacy Dashboard</h2>
 
 <div class="row g-4">
+
+    <!-- Total Medicines -->
     <div class="col-md-6 col-lg-3">
-        <div class="card p-4">
+        <div class="card p-4 h-100">
             <p class="text-muted mb-2">Total Medicines</p>
             <h2>{{ total_medicines }}</h2>
             <a href="{{ url_for('medicines') }}">View medicines</a>
         </div>
     </div>
 
+    <!-- Low Stock -->
     <div class="col-md-6 col-lg-3">
-        <div class="card p-4">
+        <div class="card p-4 h-100">
             <p class="text-muted mb-2">Low Stock</p>
-            <h2 class="text-warning">{{ low_stock }}</h2>
+            <h2 class="text-warning">{{ low_stock|length }}</h2>
             <a href="{{ url_for('stock') }}">Check stock</a>
         </div>
     </div>
 
+    <!-- Expired Medicines -->
     <div class="col-md-6 col-lg-3">
-        <div class="card p-4">
+        <div class="card p-4 h-100">
             <p class="text-muted mb-2">Expired Medicines</p>
-            <h2 class="text-danger">{{ expired }}</h2>
+            <h2 class="text-danger">{{ expired|length }}</h2>
+
+            {% if expired %}
+                <ul class="mb-2 ps-3">
+                    {% for medicine in expired %}
+                        <li>{{ medicine.name }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-success mb-2">None</p>
+            {% endif %}
+
             <a href="{{ url_for('stock') }}">Check expiry</a>
         </div>
     </div>
 
+    <!-- Expiring Soon -->
     <div class="col-md-6 col-lg-3">
-        <div class="card p-4">
-            <p class="text-muted mb-2">Expiring This Year</p>
-            <h2 class="text-primary">{{ expiring_soon }}</h2>
+        <div class="card p-4 h-100">
+            <p class="text-muted mb-2">Expiring Within 30 Days</p>
+            <h2 class="text-primary">{{ expiring_soon|length }}</h2>
+
+            {% if expiring_soon %}
+                <ul class="mb-2 ps-3">
+                    {% for medicine in expiring_soon %}
+                        <li>{{ medicine.name }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-success mb-2">None</p>
+            {% endif %}
+
             <a href="{{ url_for('stock') }}">View alerts</a>
         </div>
     </div>
+
 </div>
 
+<!-- Quick Actions -->
 <div class="card p-4 mt-4">
     <h4>Quick Actions</h4>
     <p>Manage your pharmacy inventory and sales from one place.</p>
 
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ url_for('add_medicine') }}" class="btn btn-primary">
+        <a href="{{ url_for('add_medicine') }}"
+           class="btn btn-primary">
             + Add Medicine
         </a>
 
-        <a href="{{ url_for('medicines') }}" class="btn btn-outline-primary">
+        <a href="{{ url_for('medicines') }}"
+           class="btn btn-outline-primary">
             View Inventory
         </a>
 
-        <a href="{{ url_for('billing') }}" class="btn btn-success">
+        <a href="{{ url_for('billing') }}"
+           class="btn btn-success">
             Create Bill
         </a>
 
-        <a href="{{ url_for('sales') }}" class="btn btn-outline-success">
+        <a href="{{ url_for('sales') }}"
+           class="btn btn-outline-success">
             View Sales
         </a>
     </div>
 </div>
+
 {% endblock %}

@@ -4,6 +4,7 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+import math
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "pharmacy-secret-key"
@@ -70,18 +71,18 @@ def dashboard():
     total_medicines = len(medicines_list)
 
     low_stock = [
-        m for m in medicines_list
-        if m.quantity <= m.low_stock_limit
+        medicine for medicine in medicines_list
+        if medicine.quantity <= medicine.low_stock_limit
     ]
 
     expired = [
-        m for m in medicines_list
-        if m.expiry_date < today
+        medicine for medicine in medicines_list
+        if medicine.expiry_date < today
     ]
 
     expiring_soon = [
-        m for m in medicines_list
-        if today <= m.expiry_date <= soon
+        medicine for medicine in medicines_list
+        if today <= medicine.expiry_date <= soon
     ]
 
     return render_template(
@@ -100,7 +101,11 @@ def medicines():
     with get_db() as connection:
         if search:
             rows = connection.execute(
-                "SELECT * FROM medicine WHERE name LIKE ? ORDER BY name",
+                """
+                SELECT * FROM medicine
+                WHERE name LIKE ?
+                ORDER BY name
+                """,
                 (f"%{search}%",)
             ).fetchall()
         else:
@@ -134,10 +139,15 @@ def add_medicine():
                 request.form.get("low_stock_limit", 10)
             )
 
-            if not name or not company or not batch:
-                raise ValueError
-
-            if quantity < 0 or price < 0 or low_stock_limit < 0:
+            if (
+                not name
+                or not company
+                or not batch
+                or not math.isfinite(price)
+                or quantity < 0
+                or price < 0
+                or low_stock_limit < 0
+            ):
                 raise ValueError
 
             with get_db() as connection:
@@ -187,35 +197,41 @@ def edit_medicine(medicine_id):
             batch = request.form["batch"].strip()
             quantity = int(request.form["quantity"])
             price = float(request.form["price"])
-            expiry_date = date.fromisoformat(request.form["expiry_date"])
-            low_stock_limit = int(request.form.get("low_stock_limit", 10))
+            expiry_date = date.fromisoformat(
+                request.form["expiry_date"]
+            )
+            low_stock_limit = int(
+                request.form.get("low_stock_limit", 10)
+            )
 
-            if not name or not company or not batch:
-                raise ValueError
-
-            if quantity < 0 or price < 0 or low_stock_limit < 0:
+            if (
+                not name
+                or not company
+                or not batch
+                or not math.isfinite(price)
+                or quantity < 0
+                or price < 0
+                or low_stock_limit < 0
+            ):
                 raise ValueError
 
             with get_db() as connection:
-                connection.execute(
-                    """
+                connection.execute("""
                     UPDATE medicine
                     SET name = ?, company = ?, batch = ?,
                         quantity = ?, price = ?, expiry_date = ?,
                         low_stock_limit = ?
                     WHERE id = ?
-                    """,
-                    (
-                        name,
-                        company,
-                        batch,
-                        quantity,
-                        price,
-                        expiry_date.isoformat(),
-                        low_stock_limit,
-                        medicine_id,
-                    ),
-                )
+                """, (
+                    name,
+                    company,
+                    batch,
+                    quantity,
+                    price,
+                    expiry_date.isoformat(),
+                    low_stock_limit,
+                    medicine_id
+                ))
 
             flash("Medicine updated successfully!", "success")
             return redirect(url_for("medicines"))
@@ -224,6 +240,8 @@ def edit_medicine(medicine_id):
             flash("Please enter valid medicine details.", "danger")
 
     return render_template("medicine_form.html", medicine=medicine)
+
+
 @app.route("/delete/<int:medicine_id>", methods=["POST"])
 def delete_medicine(medicine_id):
     with get_db() as connection:
@@ -231,6 +249,7 @@ def delete_medicine(medicine_id):
             "DELETE FROM medicine WHERE id = ?",
             (medicine_id,)
         )
+
     flash("Medicine deleted successfully!", "success")
     return redirect(url_for("medicines"))
 
@@ -248,13 +267,18 @@ def stock():
     medicines_list = [medicine_object(row) for row in rows]
 
     low_stock = [
-        m for m in medicines_list
-        if m.quantity <= m.low_stock_limit
+        medicine for medicine in medicines_list
+        if medicine.quantity <= medicine.low_stock_limit
     ]
-    expired = [m for m in medicines_list if m.expiry_date < today]
+
+    expired = [
+        medicine for medicine in medicines_list
+        if medicine.expiry_date < today
+    ]
+
     expiring = [
-        m for m in medicines_list
-        if today <= m.expiry_date <= soon
+        medicine for medicine in medicines_list
+        if today <= medicine.expiry_date <= soon
     ]
 
     return render_template(
@@ -267,49 +291,103 @@ def stock():
 
 @app.route("/billing", methods=["GET", "POST"])
 def billing():
+    if request.method == "POST":
+        try:
+            medicine_id = int(request.form["medicine_id"])
+            quantity = int(request.form["quantity"])
+            discount_percent = float(
+                request.form.get("discount_percent", "0")
+            )
+
+            if (
+                quantity <= 0
+                or not math.isfinite(discount_percent)
+                or not 0 <= discount_percent <= 100
+            ):
+                raise ValueError
+
+        except (ValueError, KeyError):
+            flash(
+                "Enter a valid medicine, quantity and discount.",
+                "danger"
+            )
+            return redirect(url_for("billing"))
+
+        with get_db() as connection:
+            # Recheck stock and expiry immediately before the sale.
+            connection.execute("BEGIN IMMEDIATE")
+
+            row = connection.execute(
+                "SELECT * FROM medicine WHERE id = ?",
+                (medicine_id,)
+            ).fetchone()
+
+            if row is None:
+                flash("Medicine not found.", "danger")
+
+            elif date.fromisoformat(row["expiry_date"]) < date.today():
+                flash(
+                    "This medicine has expired and cannot be sold.",
+                    "danger"
+                )
+
+            elif row["quantity"] < quantity:
+                flash("Not enough stock available.", "danger")
+
+            else:
+                subtotal = round(row["price"] * quantity, 2)
+                discount_amount = round(
+                    subtotal * discount_percent / 100, 2
+                )
+                final_total = round(subtotal - discount_amount, 2)
+
+                connection.execute("""
+                    UPDATE medicine
+                    SET quantity = quantity - ?
+                    WHERE id = ?
+                """, (quantity, medicine_id))
+
+                connection.execute("""
+                    INSERT INTO sale (
+                        medicine_name, quantity, total, sale_date
+                    )
+                    VALUES (?, ?, ?, ?)
+                """, (
+                    row["name"],
+                    quantity,
+                    final_total,
+                    date.today().isoformat()
+                ))
+
+                flash(
+                    f"Sale completed! Subtotal: ₹{subtotal:.2f}; "
+                    f"Discount: ₹{discount_amount:.2f}; "
+                    f"Final total: ₹{final_total:.2f}",
+                    "success"
+                )
+                return redirect(url_for("sales"))
+
+        return redirect(url_for("billing"))
+
+    today = date.today()
+
     with get_db() as connection:
-        if request.method == "POST":
-            try:
-                medicine_id = int(request.form["medicine_id"])
-                quantity = int(request.form["quantity"])
+        rows = connection.execute("""
+            SELECT * FROM medicine
+            WHERE quantity > 0
+            ORDER BY name
+        """).fetchall()
 
-                if quantity <= 0:
-                    raise ValueError
+    medicines_list = [
+        medicine_object(row)
+        for row in rows
+        if date.fromisoformat(row["expiry_date"]) >= today
+    ]
 
-                row = connection.execute(
-                    "SELECT * FROM medicine WHERE id = ?",
-                    (medicine_id,)
-                ).fetchone()
-
-                if row is None:
-                    flash("Medicine not found.", "danger")
-                elif date.fromisoformat(row["expiry_date"]) < date.today():
-                    flash("This medicine has expired and cannot be sold.", "danger")
-                elif row["quantity"] < quantity:
-                    flash("Not enough stock available.", "danger")
-                else:
-                    total = row["price"] * quantity
-
-                    connection.execute(
-                        "UPDATE medicine SET quantity = quantity - ? WHERE id = ?",
-                        (quantity, medicine_id)
-                    )
-                    connection.execute(
-                        "INSERT INTO sale (medicine_name, quantity, total, sale_date) VALUES (?, ?, ?, ?)",
-                        (row["name"], quantity, total, date.today().isoformat())
-                    )
-                    flash("Sale completed successfully!", "success")
-                    return redirect(url_for("sales"))
-
-            except (ValueError, KeyError):
-                flash("Please enter a valid medicine and quantity.", "danger")
-
-        rows = connection.execute(
-            "SELECT * FROM medicine ORDER BY name"
-        ).fetchall()
-
-    medicines_list = [medicine_object(row) for row in rows]
-    return render_template("billing.html", medicines=medicines_list)
+    return render_template(
+        "billing.html",
+        medicines=medicines_list
+    )
 
 
 @app.route("/sales")
@@ -320,7 +398,7 @@ def sales():
         ).fetchall()
 
     sales_list = [sale_object(row) for row in rows]
-    total_revenue = sum(s.total for s in sales_list)
+    total_revenue = sum(sale.total for sale in sales_list)
 
     return render_template(
         "sales.html",
